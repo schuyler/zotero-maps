@@ -1,21 +1,20 @@
 <?xml version="1.0"?>
-<?xml-stylesheet href="chrome://zotero-maps/skin/overlay.css" type="text/css"?>
 <!DOCTYPE window SYSTEM "chrome://zotero-maps/locale/maps.dtd">
 
 <overlay id="zotero-maps-overlay"
 	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-	
-	<stringbundleset id="stringbundleset">
-		<stringbundle id="zotero-maps-strings"
-			src="chrome://zotero-maps/locale/maps.properties"/>
-	</stringbundleset>
-	
-	<menupopup id="zotero-tb-actions-popup">
-		<!-- Make sure the menu separator for utilities is visible -->
-		<menuseparator id="zotero-tb-actions-plugins-separator" hidden="false"/>
-		<menuitem insertafter="zotero-tb-actions-plugins-separator" label="&zoteromaps.name;" oncommand="Zotero.Maps.load()"/>
-	</menupopup>
-	
-	<!-- Include the main extension logic -->
-	<script src="chrome://zotero-maps/content/include.js"/>
+
+    <stringbundleset id="stringbundleset">
+            <stringbundle id="zotero-maps-strings"
+                    src="chrome://zotero-maps/locale/maps.properties"/>
+    </stringbundleset>
+    
+    <menupopup id="zotero-tb-actions-popup">
+            <!-- Make sure the menu separator for utilities is visible -->
+            <menuseparator id="zotero-tb-actions-plugins-separator" hidden="false"/>
+            <menuitem insertafter="zotero-tb-actions-plugins-separator" label="&zoteromaps.load;" oncommand="Zotero.Maps.load()"/>
+    </menupopup>
+
+    <!-- Include the main extension logic -->
+    <script src="chrome://zotero-maps/content/include.js"/>
 </overlay>

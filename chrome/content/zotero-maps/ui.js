@@ -1,7 +1,6 @@
 var map, markers, loadingPanel, items_to_load = 0;
 var llproj = new OpenLayers.Projection("EPSG:4326");
 var googproj = new OpenLayers.Projection("EPSG:900913");
-var json_format = new OpenLayers.Format.JSON();
 
 var Feature = OpenLayers.Class(OpenLayers.Feature, {
     popupClass: OpenLayers.Popup.FramedCloud,
@@ -92,39 +91,7 @@ function add_item_to_features (item, geoname, features) {
     features[key].data.items.push(citation);
 };
 
-function handle_geonames_query (req, placename, item, features) { 
-    // 'this' should be a Zotero.Item object,
-    // 'req' is a XmlHttpRequest response
-    // 'features' is a dict keyed by lon/lat
-    try {
-        items_to_load--;
-        // console.log("--items to load:" + items_to_load);
-        if (!items_to_load) {
-            // console.log("loadingPanel hidden");
-            loadingPanel.setVisible(false);
-        }
-        var json = json_format.read(req.responseText);
-        if(json && json.totalResultsCount > 0) {
-            var geoname = json.geonames[0];
-            /* Store the geonames result in the cache for later reuse.
-             * The geonames service may return a different place name than
-             * the one given; if so, cache that, too. */
-            Zotero.Maps.set(placename, geoname.lng, geoname.lat);
-            if (geoname.name != placename) {
-                Zotero.Maps.set(geoname.name, geoname.lng, geoname.lat);
-            }
-            add_item_to_features(item, geoname, features);
-        } else {
-            /* Cache the place name as unknown so that we don't
-             * keep hammering the geocoder. */
-            Zotero.Maps.set(placename, 0.0, 0.0);
-        }
-    } catch (e) {
-        alert(e);
-    }
-}
-
-function query_geonames (item, placename, features) {
+function lookup_item_for_features (item, placename, features) {
     /* If we have the placename cached, use the cached result;
      * Otherwise, call the geonames search service. */
     var geoname = Zotero.Maps.get(placename);
@@ -140,11 +107,15 @@ function query_geonames (item, placename, features) {
         }
         // console.log("++items to load:" + items_to_load);
         items_to_load++;
-
-        var url='http://ws.geonames.org/search';
-        var q = '?q='+placename+'&maxRows=1&type=json';
-        OpenLayers.loadURL(url, q, item, function (req) {
-            handle_geonames_query(req, placename, item, features) });
+        Zotero.Map.query(item, geoname, function (item, geoname) {
+            items_to_load--;
+            // console.log("--items to load:" + items_to_load);
+            if (!items_to_load) {
+                // console.log("loadingPanel hidden");
+                loadingPanel.setVisible(false);
+            }
+            add_item_to_features(item, geoname, features);
+        });
     }
 }
 
@@ -160,7 +131,7 @@ function populate_map (field, max_items) {
     for(var j=0; j<max_items; j++) {
         var placeName = items[j].getField(field);
         if (!placeName) continue;
-        query_geonames(items[j], placeName, features);
+        lookup_item_for_features(items[j], placeName, features);
     }
 }
 
