@@ -1,0 +1,6 @@
+content	zotero-maps			chrome/content/zotero-maps/ 
+content	zotero-maps			chrome/content/zotero-maps/ contentaccessible=yes
+locale	zotero-maps	en-US		chrome/locale/en-US/zotero-maps/
+skin	zotero-maps	default		chrome/skin/default/zotero-maps/
+
+overlay	chrome://browser/content/browser.xul	chrome://zotero-maps/content/overlay.xul

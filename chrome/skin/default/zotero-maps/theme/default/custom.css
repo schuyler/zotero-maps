@@ -1,0 +1,17 @@
+.olControlLoadingPanel {
+    background-image:url(chrome://zotero-maps/skin/loading.gif);
+    background-position:center;
+    background-repeat:no-repeat;
+}
+.olControlAttribution {
+    font-size: smaller;
+    right: 5px;
+    bottom: 5px;
+    position: absolute;
+    display: block;
+}
+
+.olFramedCloudPopupContent {
+padding: 5px;
+overflow: auto;
+}
