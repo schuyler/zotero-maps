@@ -1,5 +1,9 @@
 XPI := zotero-maps
 
+
+html:
+	rst2html README.rst README.html
+
 all:
 	rm -f $(XPI).xpi
-	find | grep -Ev '\.svn|\.xpi|\.swp|~|Makefile' | zip $(XPI).xpi -@
+	zip -9r $(XPI).xpi chrome chrome.manifest  install.rdf
