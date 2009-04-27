@@ -129,29 +129,129 @@ are exactly what you'd expect.
 The core plugin code all lives in ``chrome/content/zotero-maps/``, while the
 static content is in ``chrome/skin/default/zotero-maps/``. One exception is the
 OpenLayers library, which does not require Firefox extension privileges at
-runtime, and so it lives in the ``skin/`` directory, along with its static
-content.
+runtime. Consequently, the library lives in the ``skin/`` directory, along with
+its static content.
 
 A ``Makefile`` is included with the distribution. We use this to build the
 ``.xpi`` file. We don't package up the chrome directory as a ``.jar`` file;
-please let us know if you can offer a particular reason why we should.
+please let us know if you can suggest a particular reason why we should.
 
-Content
+overlay.xul
+~~~~~~~~~~~
+
+The ``overlay.xul`` file defines the UI overlay for the Zotero Maps plugin. It
+sets up a single menu option in the tools dropdown, and calls ``include.js`` to
+bootstrap the plugin at load time.
+
+include.js
+~~~~~~~~~~
+
+The ``include.js`` file creates a core ``Zotero`` object using the XPCOM API.
+Additionally, it loads the OpenLayers library, and loads ``setup.js`` to
+initialize the Zotero Maps plugin.
+
+setup.js
+~~~~~~~~
+
+The ``setup.js`` file contains the definition of the ``Zotero.Maps`` singleton
+object that provides the core functionality of the Zotero Maps plugin.
+
+
+The ``init`` method of the ``Zotero.Maps`` object configures the plugin:
+
+  * With the Mozilla XPCOM API, it maps the ``zotero://maps`` URI to
+    ``ui.html``, which provides the main visualization interface of Zotero
+    Maps.
+  * Using the Zotero API, ``init`` creates a new local SQLite database,
+    with a single table, ``cache``, used to store geocoding results from
+    geonames.org.
+  * Also, using the Zotero API, ``init`` registers the ``notifierCallback``
+    method to be called when new items are added to the Zotero collection,
+    so that they can be geocoded according to their ``place`` attribute
+    immediately, if possible.
+
+The ``get`` and ``set`` methods wrap access to the ``cache`` table. The
+name, latitude, and longitude from all geonames results are stored there.
+
+The ``query`` method is used to perform lookups against the Geonames API,
+using the OpenLayers XML HTTP request API. The request is asynchronous, so
+the results are passed to the ``query_callback`` function. If the API
+lookup yields results, the results are stored in the cache, and, if a UI
+callback was provided, it's then called with the result. 
+
+Typically, the Geonames API returns multiple matches for a given place
+name, order more or less by importance. The first query result is used by
+Zotero Maps by default, as it's usually the one intended. If Geonames
+couldn't identify the place name, the place is cached with the coordinates
+(0,0), to mark it as unknown. A future version of Zotero Maps should
+provide a user interface to allow the user to choose from the full list of
+Geonames query results, or to allow manual correction, if the first result
+returned should turn out not to be the one intended.
+
+Finally, the ``load`` method of the ``Zotero.Maps`` object provides the
+hooks for the integration with the Zotero UI in ``overlay.xul``. The logic
+for deciding what to display on the map is as follows:
+
+  * If one or more particular items are selected in the Zotero UI, map them.
+  * If a collection is selected, map the items in it.
+  * If a saved search is selected, map the items in it.
+  * Otherwise, attempt to map the entire library. 
+
+ui.html
 ~~~~~~~
-./chrome/content/zotero-maps/include.js
-./chrome/content/zotero-maps/overlay.xul
-./chrome/content/zotero-maps/setup.js
-./chrome/content/zotero-maps/ui.html
-./chrome/content/zotero-maps/ui.js
 
-Skin
-~~~~
+The ``ui.html`` file provides the main visualization interface for the
+plugin, which is a very basic OpenLayers application. It loads OpenLayers
+and plugin-specific CSS from the ``skin`` directory, and then loads the
+Zotero Maps API, the OpenLayers API, and the Zotero Maps UI code, in that
+order. Since this file loads ``chrome://`` URLs, it is kept in the
+``chrome/content/`` directory, in order to have permissions to do so.
+
+ui.js
+~~~~~
+
+The main Zotero Maps UI code lives in ``ui.js`` and provides the map
+display and interaction.
+
+The ``onLoad`` function is called by the browser when ``ui.html`` loads.
+This function creates an ``OpenLayers.Map`` object, and configures it with
+various UI controls, including pan/zoom, keyboard and mouse navigation,
+base map attribution, and the loading spinner. The map is configured to
+display in the global spherical Mercator projection, to match the
+OpenStreetMap tiles used as the basemap. (Note that this is the same
+projection used by Google Maps.)
+
+The ``populate_map`` function is called by ``onLoad`` to fetch the selected
+items from Zotero, and display them on the map via
+``lookup_item_for_features``. This function looks up the items in the cache
+via the Zotero Maps API described above, and, when item places are not
+present, uses the API to query the place names on Geonames and cache them.
+
+As each item is loaded, ``add_item_to_features`` is called. This function
+creates a marker on the map for each coordinate pair, if one isn't already
+present, and adds the item to the popup listing for that marker. If a
+marker is already present at that location, the item is simply added to the
+list. Each marker is created with a UI callback that opens a popup balloon
+showing the list of items matching the marker's location. Each list item is
+hotlinked to its entry in the Zotero UI, so that clicking on an item listed
+in a popup balloon opens its details in the Zotero panel.
 
 OpenLayers
 ~~~~~~~~~~
 
+The current version of Zotero Maps ships with a custom build of OpenLayers
+2.7. The build configuration is kept in a file called ``zotero.cfg`` in the
+Zotero Maps source tree. The loading panel code comes from the OpenLayers
+``contrib`` SVN tree, and was added manually to the OL source tree prior to
+building the compressed version of the library.
+
 Patches
 ~~~~~~~
+
+We wholeheartedly welcome developers to `contact us`_ by email to submit
+patches to Zotero Maps. Feature and bug fix submissions should by and large
+follow the same JavaScript coding conventions used in the current code base.
+Thank you in advance for your interest!
 
 
 .. _Zotero: http://www.zotero.org/
