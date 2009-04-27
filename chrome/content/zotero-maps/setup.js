@@ -69,7 +69,6 @@ Zotero.Maps = {
 
     query_callback: function (req, item, placename, callback) {
         try {
-            // FIXME: need a way of evaluating JSON
             var json = Zotero.Maps.json_format.read(req.responseText);
             if(json && json.totalResultsCount > 0) {
                 var geoname = json.geonames[0];
