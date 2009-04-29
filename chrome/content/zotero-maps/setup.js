@@ -62,16 +62,18 @@ Zotero.Maps = {
         var url='http://zotero.ws.geonames.org/search';
         var q = '?q='+placename+'&maxRows=1&type=json';
         OpenLayers.loadURL(url, q, item, function (req) {
-            this.query_callback(req, item, placename, callback) });
+            Zotero.Maps.query_callback(req, item, placename, callback) });
     },
 
     json_format: new OpenLayers.Format.JSON(),
 
     query_callback: function (req, item, placename, callback) {
         try {
+            // TODO: give a nice message if the webservice is down (timeouts are too long)
             var json = Zotero.Maps.json_format.read(req.responseText);
+            var geoname;
             if(json && json.totalResultsCount > 0) {
-                var geoname = json.geonames[0];
+                geoname = json.geonames[0];
                 /* Store the geonames result in the cache for later reuse.
                  * The geonames service may return a different place name than
                  * the one given; if so, cache that, too. */
@@ -79,12 +81,15 @@ Zotero.Maps = {
                 if (geoname.name != placename) {
                     this.set(geoname.name, geoname.lng, geoname.lat);
                 }
-                if (callback != null)
+                if (callback != null){
                     callback(item, geoname);
+                }
             } else {
                 /* Cache the place name as unknown so that we don't
                  * keep hammering the geocoder. */
                 this.set(placename, 0.0, 0.0);
+                geoname = "UNKNOWN";
+                callback(item, geoname);
             }
         } catch (e) {
             alert(e);
@@ -97,10 +102,11 @@ Zotero.Maps = {
             if (event == 'add' || event == 'modify') {
                 // Retrieve the added/modified items as Item objects
                 var items = Zotero.Items.get(ids);
-                for (var item in items) {
+                for each(var item in items) {
                     var placename = item.getField("place");
-                    if (placename && !Zotero.Maps.get(placename))
+                    if (placename && !Zotero.Maps.get(placename)) {
                         Zotero.Maps.query(item, placename);
+                        }
                 }
             }
         }

@@ -1,4 +1,5 @@
-var map, markers, loadingPanel, items_to_load = 0;
+var map, markers, loadingPanel;
+var items_to_load = 0;
 var llproj = new OpenLayers.Projection("EPSG:4326");
 var googproj = new OpenLayers.Projection("EPSG:900913");
 
@@ -7,9 +8,9 @@ var Feature = OpenLayers.Class(OpenLayers.Feature, {
     mouseDown: function (evt) {
         var existing = map.popups[0];
         if (existing && existing.feature == this) {
-            map.removePopup(existing);
+            existing.toggle();
         } else { 
-            /* BUG? Where's the popup close button? */
+           
             var popup = this.createPopup(true);
             var html = '<b>'+this.data.name+'</b> ('+this.data.items.length+')<hr />';
             for (var i = 0; i<this.data.items.length; i++) {
@@ -24,6 +25,7 @@ var Feature = OpenLayers.Class(OpenLayers.Feature, {
             popup.feature = this;
             popup.setContentHTML(html);
             map.addPopup(popup,true);
+            popup.show();
         }
         OpenLayers.Event.stop(evt);
         return true;
@@ -76,7 +78,10 @@ function add_item_to_features (item, geoname, features) {
      * grouped by location. */
 
     if (!features[key]) {
-        var feature = new Feature(markers, loc, {name:geoname.name, items:[]});
+        var size = new OpenLayers.Size(16,28); 
+        var offset = new OpenLayers.Pixel(-(size.w/2), -size.h); 
+        var zoteroIcon = new OpenLayers.Icon('chrome://zotero-maps/skin/img/zotero_16x28.png',size,offset);
+        var feature = new Feature(markers, loc, {name:geoname.name, items:[], icon:zoteroIcon.clone()});
         var marker = feature.createMarker();
         markers.addMarker(marker);
         marker.events.register("mousedown", feature, feature.mouseDown);
@@ -91,7 +96,7 @@ function add_item_to_features (item, geoname, features) {
     features[key].data.items.push(citation);
 };
 
-function lookup_item_for_features (item, placename, features) {
+function lookup_item_for_features(item, placename, features) {
     /* If we have the placename cached, use the cached result;
      * Otherwise, call the geonames search service. */
     var geoname = Zotero.Maps.get(placename);
@@ -102,24 +107,23 @@ function lookup_item_for_features (item, placename, features) {
         }
     } else {
         if (!items_to_load) {
-            // console.log("loadingPanel visible");
-            loadingPanel.setVisible(true);
+            loadingPanel.maximizeControl();
         }
-        // console.log("++items to load:" + items_to_load);
         items_to_load++;
-        Zotero.Map.query(item, geoname, function (item, geoname) {
+        Zotero.Maps.query(item, placename, function (item, geoname) {
             items_to_load--;
-            // console.log("--items to load:" + items_to_load);
-            if (!items_to_load) {
-                // console.log("loadingPanel hidden");
-                loadingPanel.setVisible(false);
+            if (!items_to_load) {           
+                loadingPanel.minimizeControl();
             }
+            if (geoname != "UNKNOWN"){
             add_item_to_features(item, geoname, features);
+             }
         });
-    }
+    } 
 }
 
 function populate_map (field, max_items) {
+
     var items = get_items_from_zotero();
     var features = {};
     if (items.length > max_items) {
@@ -130,9 +134,23 @@ function populate_map (field, max_items) {
     }
     for(var j=0; j<max_items; j++) {
         var placeName = items[j].getField(field);
-        if (!placeName) continue;
+        if (!placeName){
+             continue;
+        }
         lookup_item_for_features(items[j], placeName, features);
     }
+
+     //map zoom to extent of markers
+     var bounds = markers.getDataExtent();
+     if (bounds) {
+        map.zoomToExtent(bounds);
+        if (markers.markers.length == 1) {
+             map.zoomTo(4);
+        }
+     }else{
+        map.zoomToMaxExtent();
+        map.zoomTo(2);
+     }
 }
 
 function osm_getTileURL(bounds) {
@@ -197,8 +215,15 @@ function onLoad() {
 
     markers = new OpenLayers.Layer.Markers("markers");
     map.addLayers([mapnik, markers]);
-
+    
+      loadingPanel.setVisible(false);
+      
+    //turn off default layer event stuff for the loadingPanel...hack.
+    for (var i = 0; i < map.layers.length; i++) {
+            var layer = map.layers[i];
+            layer.events.unregister('loadstart', loadingPanel);
+            layer.events.unregister('loadend', loadingPanel);
+        }
     populate_map("place", 100);
-    map.zoomToMaxExtent();
 }
 
